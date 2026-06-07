@@ -17,9 +17,17 @@
           </el-input>
           <el-button type="primary" @click="handleSearch">查询</el-button>
         </div>
-        <el-button type="primary" @click="openCreate">
-          <el-icon><Plus /></el-icon>新增客户
-        </el-button>
+        <div style="display: flex; gap: 8px">
+          <el-button @click="openImport">
+            <el-icon><Upload /></el-icon>导入
+          </el-button>
+          <el-button @click="openAuditLog">
+            <el-icon><Tickets /></el-icon>日志
+          </el-button>
+          <el-button type="primary" @click="openCreate">
+            <el-icon><Plus /></el-icon>新增客户
+          </el-button>
+        </div>
       </div>
 
       <el-table :data="customers" v-loading="loading" stripe style="width: 100%">
@@ -57,6 +65,16 @@
       :customer="editingCustomer"
       @saved="fetchCustomers"
     />
+
+    <ImportDialog entity-type="customer"
+      v-model:visible="importDialogVisible"
+      @imported="fetchCustomers"
+    />
+
+    <AuditLogSidebar
+      v-model:visible="auditLogVisible"
+      entity-type="customer"
+    />
   </div>
 </template>
 
@@ -64,6 +82,8 @@
 import { ref, onMounted } from 'vue'
 import { getCustomers, deleteCustomer } from '../../api/customers'
 import CustomerForm from './CustomerForm.vue'
+import ImportDialog from '../../components/ImportDialog.vue'
+import AuditLogSidebar from '../../components/AuditLogSidebar.vue'
 
 const customers = ref([])
 const total = ref(0)
@@ -73,6 +93,8 @@ const searchQuery = ref('')
 const loading = ref(false)
 const dialogVisible = ref(false)
 const editingCustomer = ref(null)
+const importDialogVisible = ref(false)
+const auditLogVisible = ref(false)
 
 async function fetchCustomers() {
   loading.value = true
@@ -102,6 +124,14 @@ function openCreate() {
 function openEdit(row) {
   editingCustomer.value = { ...row }
   dialogVisible.value = true
+}
+
+function openImport() {
+  importDialogVisible.value = true
+}
+
+function openAuditLog() {
+  auditLogVisible.value = true
 }
 
 async function handleDelete(id) {

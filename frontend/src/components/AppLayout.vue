@@ -23,8 +23,8 @@
       </el-menu>
     </el-aside>
     <el-container>
-      <el-header style="height: 50px; line-height: 50px; border-bottom: 1px solid #e6e6e6; background: #fff; padding: 0 20px; font-size: 14px; color: #606266">
-        工厂销售出库管理系统
+      <el-header style="height: 50px; line-height: 50px; border-bottom: 1px solid #e6e6e6; background: #fff; padding: 0 20px; font-size: 14px; color: #606266; display: flex; justify-content: space-between; align-items: center">
+        <span>工厂销售出库管理系统</span>
       </el-header>
       <el-main style="background: #f0f2f5; padding: 20px">
         <router-view />

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.customer import Customer
 from backend.schemas.customer import CustomerCreate, CustomerUpdate, CustomerResponse
+from backend.services import audit_service
 
 
 async def list_customers(
@@ -49,6 +50,12 @@ async def create_customer(db: AsyncSession, data: CustomerCreate) -> CustomerRes
     db.add(customer)
     await db.flush()
     await db.refresh(customer)
+
+    await audit_service.log_create(
+        db, "customer", customer.id,
+        data.model_dump(),
+    )
+
     return CustomerResponse.model_validate(customer)
 
 
@@ -60,12 +67,26 @@ async def update_customer(
     if not customer:
         return None
 
+    old_values = {
+        "name": customer.name,
+        "contact_person": customer.contact_person,
+        "phone": customer.phone,
+        "address": customer.address,
+        "remark": customer.remark,
+    }
+
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(customer, key, value)
 
     await db.flush()
     await db.refresh(customer)
+
+    await audit_service.log_update(
+        db, "customer", customer_id,
+        old_values, update_data,
+    )
+
     return CustomerResponse.model_validate(customer)
 
 
@@ -74,6 +95,18 @@ async def delete_customer(db: AsyncSession, customer_id: int) -> bool:
     customer = result.scalar_one_or_none()
     if not customer:
         return False
+
+    await audit_service.log_delete(
+        db, "customer", customer_id,
+        {
+            "name": customer.name,
+            "contact_person": customer.contact_person,
+            "phone": customer.phone,
+            "address": customer.address,
+            "remark": customer.remark,
+        },
+    )
+
     await db.delete(customer)
     await db.flush()
     return True

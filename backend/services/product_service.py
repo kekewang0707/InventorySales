@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.product import Product
 from backend.schemas.product import ProductCreate, ProductUpdate, ProductResponse
+from backend.services import audit_service
 
 
 async def list_products(
@@ -49,6 +50,13 @@ async def create_product(db: AsyncSession, data: ProductCreate) -> ProductRespon
     db.add(product)
     await db.flush()
     await db.refresh(product)
+
+    # 审计日志
+    await audit_service.log_create(
+        db, "product", product.id,
+        data.model_dump(),
+    )
+
     return ProductResponse.model_validate(product)
 
 
@@ -60,12 +68,26 @@ async def update_product(
     if not product:
         return None
 
+    old_values = {
+        "name": product.name,
+        "model": product.model,
+        "default_price": float(product.default_price) if product.default_price else None,
+        "remark": product.remark,
+    }
+
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(product, key, value)
 
     await db.flush()
     await db.refresh(product)
+
+    # 审计日志
+    await audit_service.log_update(
+        db, "product", product_id,
+        old_values, update_data,
+    )
+
     return ProductResponse.model_validate(product)
 
 
@@ -74,6 +96,18 @@ async def delete_product(db: AsyncSession, product_id: int) -> bool:
     product = result.scalar_one_or_none()
     if not product:
         return False
+
+    # 审计日志（先记录再删除）
+    await audit_service.log_delete(
+        db, "product", product_id,
+        {
+            "name": product.name,
+            "model": product.model,
+            "default_price": float(product.default_price) if product.default_price else None,
+            "remark": product.remark,
+        },
+    )
+
     await db.delete(product)
     await db.flush()
     return True
