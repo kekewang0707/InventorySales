@@ -20,6 +20,10 @@
           <el-icon><User /></el-icon>
           <span>客户管理</span>
         </el-menu-item>
+        <el-menu-item index="/delivery">
+          <el-icon><Document /></el-icon>
+          <span>送货单管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

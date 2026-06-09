@@ -62,6 +62,9 @@ async def delete_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    deleted = await product_service.delete_product(db, product_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="产品不存在")
+    try:
+        deleted = await product_service.delete_product(db, product_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="产品不存在")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

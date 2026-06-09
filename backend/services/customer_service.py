@@ -96,6 +96,11 @@ async def delete_customer(db: AsyncSession, customer_id: int) -> bool:
     if not customer:
         return False
 
+    # 检查是否被送货单引用
+    from backend.services.delivery_service import check_customer_referenced
+    if await check_customer_referenced(db, customer_id):
+        raise ValueError("该客户已被送货单引用，无法删除")
+
     await audit_service.log_delete(
         db, "customer", customer_id,
         {

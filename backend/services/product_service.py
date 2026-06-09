@@ -97,6 +97,11 @@ async def delete_product(db: AsyncSession, product_id: int) -> bool:
     if not product:
         return False
 
+    # 检查是否被送货单引用
+    from backend.services.delivery_service import check_product_referenced
+    if await check_product_referenced(db, product_id):
+        raise ValueError("该产品已被送货单引用，无法删除")
+
     # 审计日志（先记录再删除）
     await audit_service.log_delete(
         db, "product", product_id,

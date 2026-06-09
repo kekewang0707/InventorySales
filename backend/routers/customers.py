@@ -62,6 +62,9 @@ async def delete_customer(
     customer_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    deleted = await customer_service.delete_customer(db, customer_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="客户不存在")
+    try:
+        deleted = await customer_service.delete_customer(db, customer_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="客户不存在")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
