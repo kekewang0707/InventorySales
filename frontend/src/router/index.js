@@ -8,6 +8,7 @@ const routes = [
   { path: '/delivery/create', name: 'DeliveryNoteCreate', component: () => import('../views/delivery/DeliveryNotePage.vue') },
   { path: '/delivery/:id', name: 'DeliveryNoteDetail', component: () => import('../views/delivery/DeliveryNotePage.vue') },
   { path: '/delivery/:id/edit', name: 'DeliveryNoteEdit', component: () => import('../views/delivery/DeliveryNotePage.vue') },
+  { path: '/statements', name: 'CustomerStatement', component: () => import('../views/statements/CustomerStatement.vue') },
 ]
 
 const router = createRouter({

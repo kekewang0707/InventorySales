@@ -77,12 +77,14 @@ def _cn_style(font_size=10, bold=False, align=TA_LEFT, name=None):
 
 
 def _amount_cn(n: Decimal) -> str:
-    """金额小写转大写"""
+    """金额小写转大写（支持角/分）"""
     digits = ["零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"]
     units = ["", "拾", "佰", "仟", "万", "拾", "佰", "仟", "亿"]
     if n == 0:
         return "零元整"
-    s = str(int(n))
+    # 整数部分
+    int_part = int(n)
+    s = str(int_part)
     l = len(s)
     result = ""
     for i, ch in enumerate(s):
@@ -95,7 +97,18 @@ def _amount_cn(n: Decimal) -> str:
             result += digits[d] + units[u]
     if not result:
         result = "零"
-    result += "元整"
+    result += "元"
+    # 小数部分（角/分）
+    frac = int(round((n - int_part) * 100))
+    if frac == 0:
+        result += "整"
+    else:
+        jiao = frac // 10
+        fen = frac % 10
+        if jiao > 0:
+            result += digits[jiao] + "角"
+        if fen > 0:
+            result += digits[fen] + "分"
     return result
 
 

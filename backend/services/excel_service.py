@@ -335,3 +335,172 @@ def export_delivery_note_xlsx(note) -> bytes:
     buf.seek(0)
     wb.close()
     return buf.getvalue()
+
+
+
+def generate_statement_xlsx(notes, start_date, end_date) -> bytes:
+    """生成客户对账单 Excel。每客户一个 sheet，5列：日期 | 送货单号 | 明细 | 金额 | 备注"""
+    from decimal import Decimal
+    from collections import OrderedDict
+    from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+    from backend.services.pdf_service import _amount_cn
+
+    wb = Workbook()
+
+    cn_font = Font(name="Arial", size=11)
+    title_font = Font(name="Arial", size=20, bold=True)
+    header_font = Font(name="Arial", size=11, bold=True)
+    bold_font = Font(name="Arial", size=11, bold=True)
+    center_align = Alignment(horizontal="center", vertical="center")
+    right_align = Alignment(horizontal="right", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+    thin_side = Side(style="thin", color="FF888888")
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    header_fill = PatternFill(start_color="FFD9D9D9", end_color="FFD9D9D9", fill_type="solid")
+    period_str = f"{start_date.isoformat()} 至 {end_date.isoformat()}"
+
+    # Group notes by customer (preserve order)
+    groups = OrderedDict()
+    for note in notes:
+        cid = note.customer_id
+        if cid not in groups:
+            groups[cid] = {"name": note.customer.name, "notes": []}
+        groups[cid]["notes"].append(note)
+
+    for idx, (cid, data) in enumerate(groups.items()):
+        if idx == 0:
+            ws = wb.active
+            ws.title = data["name"][:31]
+        else:
+            ws = wb.create_sheet(title=data["name"][:31])
+
+        # Column widths for 6 columns: A=序号, B=日期, C=送货单号, D=明细, E=金额, F=备注
+        ws.column_dimensions["A"].width = 6
+        ws.column_dimensions["B"].width = 14
+        ws.column_dimensions["C"].width = 22
+        ws.column_dimensions["D"].width = 40
+        ws.column_dimensions["E"].width = 14
+        ws.column_dimensions["F"].width = 16
+
+        # Row 1: Title (merged A1:E1)
+        ws.merge_cells("A1:F1")
+        ws["A1"] = "客户对账单"
+        ws["A1"].font = title_font
+        ws["A1"].alignment = center_align
+
+        # Row 2: Customer name & period (merged A2:E2)
+        ws.merge_cells("A2:F2")
+        ws["A2"] = f"客户：{data['name']}    对账期间：{period_str}"
+        ws["A2"].font = Font(name="Arial", size=12, bold=True)
+        ws["A2"].alignment = center_align
+
+        # Row 3: Optional customer info (address / contact / phone)
+        if notes:
+            info_parts = []
+            for field, label in [("address", "地址"), ("contact_person", "联系人"), ("phone", "电话")]:
+                val = getattr(notes[0].customer, field, None)
+                if val:
+                    info_parts.append(f"{label}：{val}")
+            if info_parts:
+                ws.merge_cells("A3:F3")
+                ws["A3"] = "  ".join(info_parts)
+                ws["A3"].font = cn_font
+                ws["A3"].alignment = left_align
+                data_start_row = 4
+            else:
+                data_start_row = 3
+        else:
+            data_start_row = 3
+
+        # Header row (6 columns: 序号, 日期, 送货单号, 明细, 金额, 备注)
+        headers = ["序号", "日期", "送货单号", "明细", "金额", "备注"]
+        for ci, h in enumerate(headers, 1):
+            cell = ws.cell(row=data_start_row, column=ci, value=h)
+            cell.font = header_font
+            cell.alignment = center_align
+            cell.fill = header_fill
+            cell.border = thin_border
+
+        # Data rows — one note per group, items expand into sub-rows
+        grand_total = Decimal("0")
+        row = data_start_row  # current row tracker
+        for ri, note in enumerate(data["notes"]):
+            # Compute item rows needed
+            items = [item for item in note.items if item.product]
+            # Group header row (date, doc_number, total_amount, remark)
+            row += 1
+            date_str = note.delivery_date.isoformat() if hasattr(note.delivery_date, "isoformat") else str(note.delivery_date)
+            note_amount = float(note.total_amount or 0)
+            # 序号 | 日期 | 送货单号 | (空) | 总金额 | 备注
+            header_vals = [ri + 1, date_str, note.doc_number, "", note_amount, note.remark or ""]
+            for ci, v in enumerate(header_vals, 1):
+                cell = ws.cell(row=row, column=ci, value=v)
+                cell.font = cn_font
+                cell.border = thin_border
+                if ci == 5:  # 金额
+                    cell.alignment = right_align
+                    cell.number_format = '#,##0.00'
+                else:
+                    cell.alignment = center_align
+            ws.row_dimensions[row].height = 20
+            # Item sub-rows
+            for item in items:
+                row += 1
+                subtotal = float(item.subtotal) if hasattr(item, 'subtotal') and item.subtotal else 0
+                # Clean number formatting
+                def _trim(s):
+                    if "." in s:
+                        return s.rstrip("0").rstrip(".")
+                    return s
+                price_s = _trim(str(item.unit_price))
+                qty_s = _trim(str(item.quantity))
+                detail_str = f"{item.product.name} * {price_s} * {qty_s}"
+                # (空) | (空) | (空) | 明细 | 小计 | (空)
+                item_vals = ["", "", "", detail_str, subtotal, ""]
+                for ci, v in enumerate(item_vals, 1):
+                    cell = ws.cell(row=row, column=ci, value=v)
+                    cell.font = cn_font
+                    cell.border = thin_border
+                    if ci == 5:  # 金额
+                        cell.alignment = right_align
+                        cell.number_format = '#,##0.00'
+                    elif ci == 4:  # 明细 — left align
+                        cell.alignment = left_align
+                    else:
+                        cell.alignment = center_align
+                ws.row_dimensions[row].height = 20
+            grand_total += note.total_amount or Decimal("0")
+
+        # Total row — 大写 + 小写
+        total_row = row + 1
+        ws.merge_cells(f"A{total_row}:D{total_row}")
+        total_cn = _amount_cn(grand_total)
+        total_label_cell = ws.cell(row=total_row, column=1, value=f"合计金额（大写）：{total_cn}")
+        total_label_cell.font = bold_font
+        total_label_cell.alignment = left_align
+        total_label_cell.fill = header_fill
+        total_label_cell.border = thin_border
+        ws.cell(row=total_row, column=2).border = thin_border
+        ws.cell(row=total_row, column=2).fill = header_fill
+        ws.cell(row=total_row, column=3).border = thin_border
+        ws.cell(row=total_row, column=3).fill = header_fill
+        ws.cell(row=total_row, column=4).border = thin_border
+        ws.cell(row=total_row, column=4).fill = header_fill
+
+        total_label_cell2 = ws.cell(row=total_row, column=5, value="小写：")
+        total_label_cell2.font = bold_font
+        total_label_cell2.alignment = Alignment(horizontal="right", vertical="center")
+        total_label_cell2.fill = header_fill
+        total_label_cell2.border = thin_border
+        total_val_cell = ws.cell(row=total_row, column=6, value=float(grand_total))
+        total_val_cell.font = bold_font
+        total_val_cell.alignment = right_align
+        total_val_cell.fill = header_fill
+        total_val_cell.number_format = '#,##0.00'
+        total_val_cell.border = thin_border
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    wb.close()
+    return buf.getvalue()

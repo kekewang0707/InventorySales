@@ -24,6 +24,10 @@
           <el-icon><Document /></el-icon>
           <span>送货单管理</span>
         </el-menu-item>
+        <el-menu-item index="/statements">
+          <el-icon><List /></el-icon>
+          <span>客户对账单</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

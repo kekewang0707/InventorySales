@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.config import API_HOST, API_PORT
 from backend.database import init_db, close_db
-from backend.routers import products, customers, audit_logs, imports, delivery_notes
+from backend.routers import products, customers, audit_logs, imports, delivery_notes, statements
 
 
 @asynccontextmanager
@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-app = FastAPI(title="InventorySales", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="InventorySales", version="0.3.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,11 +39,12 @@ app.include_router(customers.router)
 app.include_router(audit_logs.router)
 app.include_router(imports.router)
 app.include_router(delivery_notes.router)
+app.include_router(statements.router)
 
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": "0.2.0"}
+    return {"status": "ok", "version": "0.3.0"}
 
 
 frontend_dist = project_root / "frontend" / "dist"
