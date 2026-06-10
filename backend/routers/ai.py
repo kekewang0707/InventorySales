@@ -35,6 +35,7 @@ async def ai_command(
     req: CommandRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    """接收用户文本指令，由 AI 服务处理后返回回复（查询/确认/执行）。"""
     result = await handle_command(req.text, db)
     return CommandResponse(**result)
 
@@ -44,5 +45,6 @@ async def ai_confirm(
     req: ConfirmRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    """用户确认写入操作后执行对应的 AI 工具函数。"""
     result = await execute_pending(req.confirm_id, db)
     return CommandResponse(**result)

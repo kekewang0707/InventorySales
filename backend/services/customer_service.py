@@ -14,6 +14,7 @@ async def list_customers(
     page: int = 1,
     page_size: int = 20,
 ) -> Tuple[int, List[CustomerResponse]]:
+    """分页查询客户列表，支持按名称/电话模糊搜索。"""
     query = select(Customer)
     count_query = select(func.count(Customer.id))
 
@@ -38,6 +39,7 @@ async def list_customers(
 
 
 async def get_customer(db: AsyncSession, customer_id: int) -> Optional[CustomerResponse]:
+    """根据 ID 获取客户详情。"""
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     customer = result.scalar_one_or_none()
     if customer:
@@ -46,6 +48,7 @@ async def get_customer(db: AsyncSession, customer_id: int) -> Optional[CustomerR
 
 
 async def create_customer(db: AsyncSession, data: CustomerCreate) -> CustomerResponse:
+    """创建新客户并记录审计日志。"""
     customer = Customer(**data.model_dump())
     db.add(customer)
     await db.flush()
@@ -62,6 +65,7 @@ async def create_customer(db: AsyncSession, data: CustomerCreate) -> CustomerRes
 async def update_customer(
     db: AsyncSession, customer_id: int, data: CustomerUpdate
 ) -> Optional[CustomerResponse]:
+    """更新客户信息，记录变更前后的审计日志。"""
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     customer = result.scalar_one_or_none()
     if not customer:
@@ -91,6 +95,7 @@ async def update_customer(
 
 
 async def delete_customer(db: AsyncSession, customer_id: int) -> bool:
+    """删除客户，检查是否被送货单引用，记录审计日志。"""
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     customer = result.scalar_one_or_none()
     if not customer:

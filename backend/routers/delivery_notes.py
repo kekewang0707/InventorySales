@@ -1,6 +1,6 @@
 from datetime import date
 import subprocess
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,6 @@ from backend.schemas.delivery_note import (
     DeliveryNoteUpdate,
     DeliveryNoteResponse,
     DeliveryNoteListResponse,
-    StatusUpdateRequest,
 )
 from backend.services import delivery_service
 
@@ -27,6 +26,7 @@ async def list_notes(
     page_size: int = 20,
     db: AsyncSession = Depends(get_db),
 ):
+    """查询送货单列表，支持按客户、日期范围筛选和分页。"""
     total, items = await delivery_service.list_notes(
         db, customer_id, start_date, end_date, page, page_size
     )
@@ -38,19 +38,15 @@ async def create_note(
     data: DeliveryNoteCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    """创建送货单（含明细行）。"""
     return await delivery_service.create_note(db, data)
 
 
 @router.get("/printers")
 async def get_printers_cross_platform() -> Dict[str, Any]:
-    import subprocess, platform
-    """
-    跨平台获取打印机列表
-    支持：Windows, macOS (Darwin), Linux
-    """
+    """跨平台获取打印机列表，支持 Windows、macOS、Linux。"""
+    import platform
     system = platform.system()
-    printers = []
-    default = ""
 
     try:
         if system == "Windows":
@@ -202,6 +198,7 @@ async def get_note(
     note_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """根据 ID 获取送货单详情（含明细行和产品信息）。"""
     note = await delivery_service.get_note(db, note_id)
     if not note:
         raise HTTPException(status_code=404, detail="送货单不存在")
@@ -214,6 +211,7 @@ async def update_note(
     data: DeliveryNoteUpdate,
     db: AsyncSession = Depends(get_db),
 ):
+    """更新送货单基本信息及明细行。已审核/已保存的送货单不可编辑。"""
     existing = await delivery_service.get_note(db, note_id)
     if not existing:
         raise HTTPException(status_code=404, detail="送货单不存在")
@@ -228,6 +226,7 @@ async def delete_note(
     note_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """删除送货单（级联删除明细行）。"""
     deleted = await delivery_service.delete_note(db, note_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="送货单不存在")
@@ -238,6 +237,7 @@ async def advance_status(
     note_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """推进送货单状态：draft → saved → reviewed。"""
     try:
         note = await delivery_service.advance_status(db, note_id)
     except ValueError as e:
@@ -252,6 +252,7 @@ async def revert_status(
     note_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """回退送货单状态：reviewed → saved → draft。"""
     try:
         note = await delivery_service.revert_status(db, note_id)
     except ValueError as e:
@@ -267,6 +268,7 @@ async def print_note(
     printer_name: str = Form(""),
     db: AsyncSession = Depends(get_db),
 ):
+    """打印送货单，生成 Excel 并通过系统打印命令发送到打印机。"""
     import subprocess, platform
     from datetime import datetime
     from backend.services.excel_service import export_delivery_note_xlsx
@@ -309,6 +311,7 @@ async def export_note(
     note_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """导出送货单为 Excel 文件下载。"""
     from fastapi.responses import Response
     note = await delivery_service.get_note(db, note_id)
     if not note:
@@ -323,7 +326,6 @@ async def export_note(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
-
 
 
 # ---- 打印机 ----

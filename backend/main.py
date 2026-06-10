@@ -19,6 +19,7 @@ from backend.routers import products, customers, audit_logs, imports, delivery_n
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """FastAPI 生命周期管理器：应用启动时初始化数据库，关闭时清理连接池。"""
     await init_db()
     yield
     await close_db()
@@ -44,6 +45,7 @@ app.include_router(ai.router)
 
 @app.get("/api/health")
 async def health():
+    """健康检查接口。"""
     return {"status": "ok", "version": "0.3.0"}
 
 

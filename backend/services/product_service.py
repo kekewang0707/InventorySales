@@ -14,6 +14,7 @@ async def list_products(
     page: int = 1,
     page_size: int = 20,
 ) -> Tuple[int, List[ProductResponse]]:
+    """分页查询产品列表，支持按名称/型号模糊搜索。"""
     query = select(Product)
     count_query = select(func.count(Product.id))
 
@@ -38,6 +39,7 @@ async def list_products(
 
 
 async def get_product(db: AsyncSession, product_id: int) -> Optional[ProductResponse]:
+    """根据 ID 获取产品详情。"""
     result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalar_one_or_none()
     if product:
@@ -46,6 +48,7 @@ async def get_product(db: AsyncSession, product_id: int) -> Optional[ProductResp
 
 
 async def create_product(db: AsyncSession, data: ProductCreate) -> ProductResponse:
+    """创建新产品并记录审计日志。"""
     product = Product(**data.model_dump())
     db.add(product)
     await db.flush()
@@ -63,6 +66,7 @@ async def create_product(db: AsyncSession, data: ProductCreate) -> ProductRespon
 async def update_product(
     db: AsyncSession, product_id: int, data: ProductUpdate
 ) -> Optional[ProductResponse]:
+    """更新产品信息，记录变更前后的审计日志。"""
     result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalar_one_or_none()
     if not product:
@@ -92,6 +96,7 @@ async def update_product(
 
 
 async def delete_product(db: AsyncSession, product_id: int) -> bool:
+    """删除产品，检查是否被送货单引用，记录审计日志。"""
     result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalar_one_or_none()
     if not product:

@@ -7,9 +7,10 @@ from typing import Optional
 
 
 class ServerManager:
-    """管理 FastAPI 子进程"""
+    """管理 FastAPI 子进程的生命周期（启动、停止、状态检查）。"""
 
     def __init__(self, host: str = "127.0.0.1", port: int = 18900):
+        """初始化服务器管理器，默认监听本机 18900 端口。"""
         self.process: Optional[subprocess.Popen] = None
         self.host = host
         self.port = port
@@ -17,7 +18,7 @@ class ServerManager:
         self._reader_threads: list = []
 
     def _forward_output(self, stream, prefix: str):
-        """将子进程的流输出转发到父进程终端"""
+        """将子进程的 stdout/stderr 流输出转发到父进程终端。"""
         try:
             for line in iter(stream.readline, b''):
                 text = line.decode("utf-8", errors="replace").rstrip()
@@ -28,6 +29,7 @@ class ServerManager:
             pass
 
     def start(self):
+        """启动 FastAPI 子进程，配置环境变量并启动输出读取线程。"""
         if self.process is not None:
             return
 
@@ -75,6 +77,7 @@ class ServerManager:
         self._reader_threads = [t_out, t_err]
 
     def stop(self):
+        """停止 FastAPI 子进程（先终止，超时后强制杀死）。"""
         if self.process is not None:
             self.process.terminate()
             try:
@@ -85,6 +88,7 @@ class ServerManager:
             self.process = None
 
     def is_running(self) -> bool:
+        """检查子进程是否仍在运行。"""
         if self.process is None:
             return False
         return self.process.poll() is None

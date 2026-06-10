@@ -18,6 +18,7 @@ from backend.services.delivery_service import (
 # ==================== 查询类 ====================
 
 async def handle_search_product(params: dict, db) -> str:
+    """按名称/型号搜索产品，返回格式化结果。"""
     query = params.get("query", "")
     page = params.get("page", 1)
     total, items = await product_service.list_products(db, search=query, page=page)
@@ -28,6 +29,7 @@ async def handle_search_product(params: dict, db) -> str:
 
 
 async def handle_search_customer(params: dict, db) -> str:
+    """按名称/电话搜索客户，返回格式化结果。"""
     query = params.get("query", "")
     page = params.get("page", 1)
     total, items = await customer_service.list_customers(db, search=query, page=page)
@@ -38,6 +40,7 @@ async def handle_search_customer(params: dict, db) -> str:
 
 
 async def handle_get_customer(params: dict, db) -> str:
+    """查看客户详情。"""
     cid = int(params["customer_id"])
     c = await customer_service.get_customer(db, cid)
     if not c:
@@ -50,6 +53,7 @@ async def handle_get_customer(params: dict, db) -> str:
 
 
 async def handle_get_product(params: dict, db) -> str:
+    """查看产品详情。"""
     pid = int(params["product_id"])
     p = await product_service.get_product(db, pid)
     if not p:
@@ -61,6 +65,7 @@ async def handle_get_product(params: dict, db) -> str:
 
 
 async def handle_list_delivery_notes(params: dict, db) -> str:
+    """查询送货单列表（按客户、日期筛选），返回格式化结果。"""
     cid = params.get("customer_id")
     sd = params.get("start_date")
     ed = params.get("end_date")
@@ -79,6 +84,7 @@ async def handle_list_delivery_notes(params: dict, db) -> str:
 
 
 async def handle_get_delivery_note(params: dict, db) -> str:
+    """查看送货单详情（含明细行和产品信息）。"""
     nid = int(params["note_id"])
     n = await _get_note(db, nid)
     if not n:
@@ -96,6 +102,7 @@ async def handle_get_delivery_note(params: dict, db) -> str:
 
 
 async def handle_get_statement(params: dict, db) -> str:
+    """查询客户对账单，支持指定客户或全部客户。"""
     from backend.routers.statements import _query_notes, _build_statements
     from backend.schemas.statement import StatementQuery
     cid = params.get("customer_id")
@@ -111,6 +118,7 @@ async def handle_get_statement(params: dict, db) -> str:
 
 
 async def handle_get_recent_logs(params: dict, db) -> str:
+    """查询最近操作日志。"""
     entity_type = params.get("entity_type")
     action = params.get("action")
     limit = params.get("limit", 10)
@@ -122,6 +130,7 @@ async def handle_get_recent_logs(params: dict, db) -> str:
 
 
 async def handle_get_statistics(params: dict, db) -> str:
+    """查询系统统计概览（产品数、客户数、送货单数、本月总额）。"""
     from sqlalchemy import select, func
     from backend.models.product import Product
     from backend.models.customer import Customer
@@ -146,8 +155,8 @@ async def handle_get_statistics(params: dict, db) -> str:
 
 
 # ==================== 写入类 ====================
-
 def summarize_create_delivery_note(params: dict) -> str:
+    """生成创建送货单的摘要文本（用于用户确认提示）。"""
     cid = params.get("customer_id", "?")
     items = params.get("items", [])
     total = sum(
@@ -159,10 +168,12 @@ def summarize_create_delivery_note(params: dict) -> str:
 
 
 def summarize_advance_note_status(params: dict) -> str:
+    """生成推进送货单状态的摘要文本（用于用户确认提示）。"""
     return f"推进送货单状态：ID={params.get('note_id', '?')}"
 
 
 async def handle_create_delivery_note(params: dict, db) -> str:
+    """执行创建送货单的写入操作（用户已确认）。"""
     from backend.schemas.delivery_note import DeliveryNoteCreate, DeliveryNoteItemCreate
     items_data = [
         DeliveryNoteItemCreate(
@@ -183,6 +194,7 @@ async def handle_create_delivery_note(params: dict, db) -> str:
 
 
 async def handle_advance_note_status(params: dict, db) -> str:
+    """执行推进送货单状态的写入操作（用户已确认）。"""
     nid = int(params["note_id"])
     note = await _advance_status(db, nid)
     if not note:

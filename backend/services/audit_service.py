@@ -17,6 +17,7 @@ async def _log(
     new_values: Optional[Dict] = None,
     operator: str = "system",
 ):
+    """审计日志底层写入方法，记录操作类型、实体、变更前后数据。"""
     log = AuditLog(
         entity_type=entity_type,
         entity_id=entity_id,
@@ -35,6 +36,7 @@ async def log_create(
     new_values: Dict,
     operator: str = "system",
 ):
+    """记录创建操作的审计日志。"""
     await _log(db, entity_type, entity_id, "create", new_values=new_values, operator=operator)
 
 
@@ -46,6 +48,7 @@ async def log_update(
     new_values: Dict,
     operator: str = "system",
 ):
+    """记录更新操作的审计日志，包含变更前后的数据快照。"""
     await _log(db, entity_type, entity_id, "update", old_values=old_values, new_values=new_values, operator=operator)
 
 
@@ -56,6 +59,7 @@ async def log_delete(
     old_values: Dict,
     operator: str = "system",
 ):
+    """记录删除操作的审计日志，保存被删除实体的数据快照。"""
     await _log(db, entity_type, entity_id, "delete", old_values=old_values, operator=operator)
 
 
@@ -65,6 +69,7 @@ async def log_import(
     count: int,
     operator: str = "system",
 ):
+    """记录批量导入操作的审计日志。"""
     await _log(db, entity_type, 0, "import", new_values={"imported_count": count}, operator=operator)
 
 
@@ -75,6 +80,7 @@ async def list_logs(
     page: int = 1,
     page_size: int = 20,
 ) -> Tuple[int, List[AuditLogResponse]]:
+    """分页查询审计日志，支持按实体类型和操作类型筛选。"""
     query = select(AuditLog)
     count_query = select(func.count(AuditLog.id))
 
@@ -96,7 +102,7 @@ async def list_logs(
     items = []
     for log in logs:
         d = AuditLogResponse.model_validate(log)
-        # 解析 JSON 字符串回 dict
+        # Parse JSON strings back to dict
         if isinstance(d.old_values, str):
             try:
                 d.old_values = json.loads(d.old_values)

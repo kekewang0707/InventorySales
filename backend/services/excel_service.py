@@ -18,6 +18,7 @@ TEMPLATES = {
 
 
 def generate_template(entity_type: str) -> bytes:
+    """生成实体导入模板的 Excel 文件（含表头及示例行）。"""
     tpl = TEMPLATES.get(entity_type)
     if not tpl:
         raise ValueError(f"不支持的实体类型: {entity_type}")
@@ -90,7 +91,7 @@ def _validate_customer_row(row: Dict[str, str], row_num: int) -> List[str]:
 def parse_excel(
     file_bytes: bytes, entity_type: str
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """解析 Excel 文件，返回 (valid_rows, errors)"""
+    """解析 Excel 导入文件，校验数据有效性，返回 (有效行列表, 错误列表)。"""
     tpl = TEMPLATES.get(entity_type)
     if not tpl:
         raise ValueError(f"不支持的实体类型: {entity_type}")
@@ -140,6 +141,7 @@ def parse_excel(
 
 
 def row_to_product_data(row: Dict[str, str]) -> Dict[str, Any]:
+    """将 Excel 行的产品数据转换为 ProductCreate 参数字典。"""
     price = None
     if row.get("默认单价", "").strip():
         try:
@@ -155,6 +157,7 @@ def row_to_product_data(row: Dict[str, str]) -> Dict[str, Any]:
 
 
 def row_to_customer_data(row: Dict[str, str]) -> Dict[str, Any]:
+    """将 Excel 行的客户数据转换为 CustomerCreate 参数字典。"""
     return {
         "name": row.get("客户名称", "").strip(),
         "contact_person": row.get("联系人", "").strip(),
@@ -166,6 +169,7 @@ def row_to_customer_data(row: Dict[str, str]) -> Dict[str, Any]:
 
 # ---- 送货单 Excel 导出 ----
 def export_delivery_note_xlsx(note) -> bytes:
+    """纯代码生成送货单 Excel 文件（不含外置模板），含标题、客户信息、明细表格、合计行。"""
     """纯代码生成送货单 Excel，不依赖外置模板"""
     from decimal import Decimal
     from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
@@ -339,6 +343,7 @@ def export_delivery_note_xlsx(note) -> bytes:
 
 
 def generate_statement_xlsx(notes, start_date, end_date) -> bytes:
+    """生成客户对账单 Excel，每客户一个 sheet，含日期、送货单号、明细、金额、备注列。"""
     """生成客户对账单 Excel。每客户一个 sheet，5列：日期 | 送货单号 | 明细 | 金额 | 备注"""
     from decimal import Decimal
     from collections import OrderedDict

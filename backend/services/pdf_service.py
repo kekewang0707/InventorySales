@@ -20,7 +20,7 @@ from backend.schemas.delivery_note import DeliveryNoteResponse
 
 
 def _register_fonts():
-    """注册中文字体"""
+    """注册中文字体（优先使用思源黑体/Noto Sans SC，回退到系统字体）。"""
     fonts_dir = get_fonts_dir()
     # 思源黑体 — 尝试几个常见文件名
     candidates = [
@@ -65,7 +65,7 @@ def _register_fonts():
 
 
 def _cn_style(font_size=10, bold=False, align=TA_LEFT, name=None):
-    """创建中文字体样式"""
+    """创建中文字体 ParagraphStyle，支持粗体和各种对齐方式。"""
     font = "CNFontBold" if bold else "CNFont"
     return ParagraphStyle(
         name or f"CN_{font_size}_{'b' if bold else 'r'}",
@@ -77,7 +77,7 @@ def _cn_style(font_size=10, bold=False, align=TA_LEFT, name=None):
 
 
 def _amount_cn(n: Decimal) -> str:
-    """金额小写转大写（支持角/分）"""
+    """金额数字转中文大写（支持元/角/分）。"""
     digits = ["零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"]
     units = ["", "拾", "佰", "仟", "万", "拾", "佰", "仟", "亿"]
     if n == 0:
@@ -113,7 +113,7 @@ def _amount_cn(n: Decimal) -> str:
 
 
 def generate_delivery_note_pdf(note: DeliveryNoteResponse, company_name: str = "XX公司") -> str:
-    """生成送货单 PDF，返回临时文件路径"""
+    """生成送货单 PDF，返回临时文件路径。包含抬头、客户信息、明细表格、合计、签收区。"""
     _register_fonts()
 
     exports_dir = get_data_dir() / "exports"

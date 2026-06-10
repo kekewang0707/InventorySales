@@ -22,6 +22,7 @@ async def list_products(
     page_size: int = 20,
     db: AsyncSession = Depends(get_db),
 ):
+    """查询产品列表，支持分页和关键字搜索。"""
     total, items = await product_service.list_products(db, search, page, page_size)
     return ProductListResponse(total=total, items=items)
 
@@ -31,6 +32,7 @@ async def create_product(
     data: ProductCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    """创建新产品。"""
     return await product_service.create_product(db, data)
 
 
@@ -39,6 +41,7 @@ async def get_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """根据 ID 获取产品详情。"""
     product = await product_service.get_product(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="产品不存在")
@@ -51,6 +54,7 @@ async def update_product(
     data: ProductUpdate,
     db: AsyncSession = Depends(get_db),
 ):
+    """更新产品信息。"""
     product = await product_service.update_product(db, product_id, data)
     if not product:
         raise HTTPException(status_code=404, detail="产品不存在")
@@ -62,6 +66,7 @@ async def delete_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """删除产品。若被送货单引用则返回 400 错误。"""
     try:
         deleted = await product_service.delete_product(db, product_id)
         if not deleted:

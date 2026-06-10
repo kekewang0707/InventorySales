@@ -54,6 +54,7 @@ _MAX_REACT_ITERATIONS = 10
 
 
 def _clean_expired():
+    """清理过期的待确认操作（超过 TTL 的删除）。"""
     now = datetime.now()
     expired = [k for k, v in _pending_actions.items()
                if now - v.created_at > _PENDING_TTL]
@@ -65,17 +66,17 @@ def _clean_expired():
 
 
 async def _execute_query_tool(tool_name: str, params: dict, db) -> str:
-    """委托 function 包执行查询类 tool"""
+    """委托 function 包执行查询类工具。"""
     return await _tools.execute_query(tool_name, params, db)
 
 
 def _summarize_write_tool(tool_name: str, params: dict) -> str:
-    """委托 function 包生成写入摘要"""
+    """委托 function 包生成写入操作摘要（用于用户确认提示）。"""
     return _tools.summarize_write(tool_name, params)
 
 
 async def _execute_write_tool(tool_name: str, params: dict, db) -> str:
-    """委托 function 包执行写入操作"""
+    """委托 function 包执行已确认的写入操作。"""
     return await _tools.execute_write(tool_name, params, db)
 
 _SYSTEM_PROMPT_TEMPLATE = """\
@@ -100,9 +101,11 @@ _SYSTEM_PROMPT_TEMPLATE = """\
 # ---- 构建消息 ----
 
 def _build_system_prompt() -> str:
+    """构建 AI 系统提示词，包含当前日期和工具使用约束。"""
     today_str = datetime.now().strftime("%Y-%m-%d")
     return _SYSTEM_PROMPT_TEMPLATE.format(today=today_str)
 def _extract_query(text: str) -> str:
+    """从用户输入中去除查询类动词，提取核心关键词。"""
     cleaned = re.sub(
         r"(查|搜|找|查询|搜索|查看|列出|显示|打印|给[我]?看)",
         "", text
@@ -111,6 +114,7 @@ def _extract_query(text: str) -> str:
 
 
 def _extract_date(text: str) -> Optional[date]:
+    """从用户输入中提取日期关键词或 YYYY-MM-DD 格式日期。"""
     today = date.today()
     if any(w in text for w in ["今天", "今日"]):
         return today
@@ -127,6 +131,7 @@ def _extract_date(text: str) -> Optional[date]:
 
 
 async def _try_offline(text: str, db) -> dict:
+    """离线关键词匹配模式：通过正则匹配用户指令，直接执行对应查询（无需 LLM 调用）。"""
     """离线规则匹配 — 关键词 + 正则"""
     # 特殊规则：创建送货单
     if re.search(r"(创建送货单|新建送货单|开送货单)", text):
@@ -165,6 +170,7 @@ async def _try_offline(text: str, db) -> dict:
 
 
 def _list_dn_offline_params(text: str) -> dict:
+    """离线模式下构建送货单查询参数，尝试从文本中提取日期。"""
     d = _extract_date(text)
     if d:
         return {"start_date": d.isoformat(), "end_date": (d + timedelta(days=1)).isoformat()}
@@ -175,6 +181,7 @@ def _list_dn_offline_params(text: str) -> dict:
 # ====================================================================
 
 async def _call_llm(messages: list):
+    """调用 LLM API，在后台线程中执行同步 OpenAI 请求。"""
     import asyncio
 
     # 打印本轮 LLM 调用消息（去除非 ASCII 字符的敏感信息）
@@ -216,8 +223,9 @@ async def _run_react_loop(
     db,
     max_iterations: int = _MAX_REACT_ITERATIONS,
 ) -> dict:
-    """ReAct 主循环：Reason → Act → Observe → Reason...
+    """ReAct 主循环：通过 Reason → Act → Observe 迭代直到 LLM 返回最终回复。
 
+    查询类工具直接执行并继续循环，写入类工具暂停等待用户确认。
     返回 dict（与 handle_command 返回格式一致）。
     """
     for iteration in range(max_iterations):

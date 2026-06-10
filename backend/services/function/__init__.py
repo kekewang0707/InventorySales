@@ -1,4 +1,7 @@
-"""function — 工具函数注册表与处理函数"""
+"""function — AI 工具函数注册表与处理函数。
+
+提供 ToolRegistry 注册表、预注册的查询/写入工具、以及所有处理函数的导入接口。
+"""
 import logging
 
 _logger = logging.getLogger('backend.services.function')

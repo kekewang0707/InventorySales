@@ -1,4 +1,8 @@
-"""工具注册 — 创建 _tools 实例并注册所有工具"""
+"""工具注册 — 创建 _tools 单例并注册所有查询/写入工具。
+
+注册完成后导出 FUNCTION_DEFINITIONS（OpenAI function calling 格式）、
+_QUERY_TOOLS 和 _WRITE_TOOLS 供外部使用。
+"""
 from .registry import ToolRegistry
 from . import handlers
 

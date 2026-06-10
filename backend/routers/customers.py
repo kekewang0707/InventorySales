@@ -22,6 +22,7 @@ async def list_customers(
     page_size: int = 20,
     db: AsyncSession = Depends(get_db),
 ):
+    """查询客户列表，支持分页和关键字搜索。"""
     total, items = await customer_service.list_customers(db, search, page, page_size)
     return CustomerListResponse(total=total, items=items)
 
@@ -31,6 +32,7 @@ async def create_customer(
     data: CustomerCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    """创建新客户。"""
     return await customer_service.create_customer(db, data)
 
 
@@ -39,6 +41,7 @@ async def get_customer(
     customer_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """根据 ID 获取客户详情。"""
     customer = await customer_service.get_customer(db, customer_id)
     if not customer:
         raise HTTPException(status_code=404, detail="客户不存在")
@@ -51,6 +54,7 @@ async def update_customer(
     data: CustomerUpdate,
     db: AsyncSession = Depends(get_db),
 ):
+    """更新客户信息。"""
     customer = await customer_service.update_customer(db, customer_id, data)
     if not customer:
         raise HTTPException(status_code=404, detail="客户不存在")
@@ -62,6 +66,7 @@ async def delete_customer(
     customer_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """删除客户。若被送货单引用则返回 400 错误。"""
     try:
         deleted = await customer_service.delete_customer(db, customer_id)
         if not deleted:

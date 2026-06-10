@@ -6,12 +6,10 @@ project_root = Path(__file__).resolve().parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-import pytest
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from backend.schemas.statement import StatementQuery, StatementNoteItem, StatementItem, StatementResponse
+from backend.schemas.statement import StatementQuery
 from backend.services.excel_service import generate_statement_xlsx
 
 
@@ -50,7 +48,7 @@ class FakeNote:
 # ---- 测试 _build_statements 逻辑 ----
 
 def test_query_statements_single_customer():
-    """验证单个客户的查询逻辑"""
+    """验证单个客户对账单查询，正确合并到一组。"""
     from backend.routers.statements import _build_statements
 
     notes = [
@@ -70,7 +68,7 @@ def test_query_statements_single_customer():
 
 
 def test_query_statements_multiple_customers():
-    """验证多客户的查询逻辑"""
+    """验证多客户对账单查询，正确按客户分组。"""
     from backend.routers.statements import _build_statements
 
     notes = [
@@ -92,7 +90,7 @@ def test_query_statements_multiple_customers():
 
 
 def test_query_statements_empty():
-    """验证无数据时返回空列表"""
+    """验证无数据时返回空列表。"""
     from backend.routers.statements import _build_statements
     statements = _build_statements([])
     assert statements == []
@@ -101,7 +99,7 @@ def test_query_statements_empty():
 # ---- 测试 Excel 生成 ----
 
 def test_generate_statement_xlsx_single():
-    """验证单个客户对账单 Excel 生成"""
+    """验证单个客户对账单 Excel 生成。"""
     notes = [
         FakeNote(1, "客户A", "DN001", date(2026, 6, 1), Decimal("150.00"), "正常", [
             FakeItem("产品X", Decimal("3"))
@@ -122,7 +120,7 @@ def test_generate_statement_xlsx_single():
 
 
 def test_generate_statement_xlsx_multiple():
-    """验证多个客户对账单 Excel 生成（每人一个 sheet）"""
+    """验证多个客户对账单 Excel 生成（每人一个 sheet）。"""
     notes = [
         FakeNote(1, "客户A", "DN001", date(2026, 6, 1), Decimal("100.00")),
         FakeNote(2, "客户B", "DN002", date(2026, 6, 2), Decimal("200.00")),
@@ -143,7 +141,7 @@ def test_generate_statement_xlsx_multiple():
 # ---- 测试 StatementQuery schema ----
 
 def test_statement_query_defaults():
-    """验证 StatementQuery 默认值"""
+    """验证 StatementQuery 默认值行为。"""
     q = StatementQuery(start_date=date(2026, 6, 1), end_date=date(2026, 6, 30))
     assert q.customer_id is None
     assert q.start_date == date(2026, 6, 1)
@@ -151,6 +149,6 @@ def test_statement_query_defaults():
 
 
 def test_statement_query_with_customer():
-    """验证指定客户查询"""
+    """验证指定客户 ID 的查询参数。"""
     q = StatementQuery(customer_id=5, start_date=date(2026, 6, 1), end_date=date(2026, 6, 30))
     assert q.customer_id == 5

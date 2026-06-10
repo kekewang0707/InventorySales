@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/statements", tags=["statements"])
 
 
 async def _query_notes(db: AsyncSession, query: StatementQuery) -> list:
+    """对账单查询逻辑（statement 和 export 两个接口共用），按日期范围查询送货单。"""
     """Shared query logic for both statement and export endpoints."""
     base_query = (
         select(DeliveryNote)
@@ -36,6 +37,7 @@ async def _query_notes(db: AsyncSession, query: StatementQuery) -> list:
 
 
 def _build_statements(notes: list) -> List[StatementItem]:
+    """将送货单列表按客户分组，构建对账单响应结构。"""
     """Group notes by customer and build response."""
     from decimal import Decimal
     customer_groups: dict = {}
@@ -90,6 +92,7 @@ async def query_statements(
     query: StatementQuery,
     db: AsyncSession = Depends(get_db),
 ):
+    """查询客户对账单，支持按客户和时间范围筛选。"""
     notes = await _query_notes(db, query)
     statements = _build_statements(notes)
     return StatementResponse(statements=statements)
@@ -100,6 +103,7 @@ async def export_statements(
     query: StatementQuery,
     db: AsyncSession = Depends(get_db),
 ):
+    """导出对账单为 Excel 文件下载。"""
     notes = await _query_notes(db, query)
     xlsx_bytes = generate_statement_xlsx(notes, query.start_date, query.end_date)
 

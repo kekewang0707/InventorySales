@@ -18,9 +18,10 @@ class _ToolEntry:
 
 
 class ToolRegistry:
-    """工具注册表 — 统一管理工具定义、执行、离线匹配"""
+    """工具注册表 — 统一管理工具定义、执行路由、离线匹配和 OpenAI function calling 格式生成。"""
 
     def __init__(self):
+        """初始化空工具注册表。"""
         self._tools: Dict[str, _ToolEntry] = {}
 
     def register(self, name: str, description: str, parameters: dict, *,
@@ -28,6 +29,7 @@ class ToolRegistry:
                  handler: Optional[Callable] = None,
                  write_handler: Optional[Callable] = None,
                  summarize_handler: Optional[Callable] = None):
+        """注册一个工具，包括名称、描述、参数 schema 和执行路由。"""
         self._tools[name] = _ToolEntry(
             name=name, description=description, parameters=parameters,
             security=security, handler=handler,
@@ -36,6 +38,7 @@ class ToolRegistry:
 
     @property
     def openai_definitions(self) -> list:
+        """返回 OpenAI function calling 格式的工具定义列表。"""
         return [
             {"type": "function", "function": {
                 "name": e.name,
@@ -47,25 +50,30 @@ class ToolRegistry:
 
     @property
     def query_tools(self) -> set:
+        """返回所有查询类工具的名称集合。"""
         return {n for n, e in self._tools.items() if e.security == "query"}
 
     @property
     def write_tools(self) -> set:
+        """返回所有写入类工具的名称集合。"""
         return {n for n, e in self._tools.items() if e.security == "write"}
 
     def has(self, name: str) -> bool:
+        """检查工具是否已注册。"""
         return name in self._tools
 
     def is_write(self, name: str) -> bool:
+        """检查工具是否为写入类操作。"""
         e = self._tools.get(name)
         return e is not None and e.security == "write"
 
     def is_query(self, name: str) -> bool:
+        """检查工具是否为查询类操作。"""
         e = self._tools.get(name)
         return e is not None and e.security == "query"
 
     async def execute_query(self, name: str, params: dict, db) -> str:
-        """执行查询类工具"""
+        """执行查询类工具。"""
         e = self._tools.get(name)
         if e is None or e.handler is None:
             return f"未知查询操作: {name}"
@@ -76,7 +84,7 @@ class ToolRegistry:
             return f"执行查询时出错: {err}"
 
     async def execute_write(self, name: str, params: dict, db) -> str:
-        """执行确认后的写入操作"""
+        """执行确认后的写入操作。"""
         e = self._tools.get(name)
         if e is None or e.write_handler is None:
             return f"未知写入操作: {name}"
@@ -87,7 +95,7 @@ class ToolRegistry:
             return f"执行操作时出错: {err}"
 
     def summarize_write(self, name: str, params: dict) -> str:
-        """生成写入操作的摘要文本"""
+        """生成写入操作的摘要文本。"""
         e = self._tools.get(name)
         if e is None or e.summarize_handler is None:
             return f"{name}({params})"

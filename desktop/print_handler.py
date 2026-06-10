@@ -7,8 +7,7 @@ from pathlib import Path
 
 
 def print_pdf(pdf_path: str) -> bool:
-    """
-    打开系统打印对话框打印 PDF。
+    """打开系统打印对话框打印 PDF。
     macOS: 使用 lp / open
     Windows: 使用 os.startfile 或 subprocess
     Linux: 使用 lp / xdg-open
@@ -35,7 +34,7 @@ def print_pdf(pdf_path: str) -> bool:
 
 
 def get_default_printer() -> str:
-    """获取系统默认打印机名称"""
+    """获取系统默认打印机名称（macOS 使用 lpstat，Windows 使用 win32print）。"""
     system = platform.system()
     try:
         if system == "Darwin":

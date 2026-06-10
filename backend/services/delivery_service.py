@@ -14,15 +14,17 @@ from backend.services import audit_service
 
 
 def _build_doc_number() -> str:
-    """生成送货单编号 DH-当前秒级时间戳"""
+    """生成送货单编号（毫秒级时间戳）。"""
     return f"{int(datetime.now().timestamp() * 1000)}"
 
 
 def _compute_total(items: List[DeliveryNoteItemResponse]) -> Decimal:
+    """计算送货单明细行的合计金额。"""
     return sum((item.subtotal for item in items), Decimal("0"))
 
 
 def _item_to_response(item: DeliveryNoteItem) -> DeliveryNoteItemResponse:
+    """将 DeliveryNoteItem ORM 对象转换为响应模型，嵌入产品名称/型号。"""
     data = DeliveryNoteItemResponse.model_validate(item)
     if item.product:
         data.product_name = item.product.name
@@ -31,6 +33,7 @@ def _item_to_response(item: DeliveryNoteItem) -> DeliveryNoteItemResponse:
 
 
 def _note_to_response(note: DeliveryNote) -> DeliveryNoteResponse:
+    """将 DeliveryNote ORM 对象转换为响应模型，嵌入客户名称和明细行。"""
     data = DeliveryNoteResponse.model_validate(note)
     if note.customer:
         data.customer_name = note.customer.name
@@ -40,6 +43,7 @@ def _note_to_response(note: DeliveryNote) -> DeliveryNoteResponse:
 
 # ---- CRUD ----
 
+
 async def list_notes(
     db: AsyncSession,
     customer_id: Optional[int] = None,
@@ -48,6 +52,7 @@ async def list_notes(
     page: int = 1,
     page_size: int = 20,
 ) -> Tuple[int, List[DeliveryNoteResponse]]:
+    """分页查询送货单列表，支持按客户、日期范围筛选。"""
     query = select(DeliveryNote)
     count_query = select(func.count(DeliveryNote.id))
 
@@ -73,6 +78,7 @@ async def list_notes(
 
 
 async def get_note(db: AsyncSession, note_id: int) -> Optional[DeliveryNoteResponse]:
+    """根据 ID 获取送货单详情（含明细行和产品信息）。"""
     result = await db.execute(select(DeliveryNote).where(DeliveryNote.id == note_id))
     note = result.scalar_one_or_none()
     if note:
@@ -81,6 +87,7 @@ async def get_note(db: AsyncSession, note_id: int) -> Optional[DeliveryNoteRespo
 
 
 async def create_note(db: AsyncSession, data: DeliveryNoteCreate) -> DeliveryNoteResponse:
+    """创建送货单，自动生成编号、计算合计金额，记录审计日志。"""
     doc_number = _build_doc_number()
 
     total = sum(
@@ -124,6 +131,7 @@ async def create_note(db: AsyncSession, data: DeliveryNoteCreate) -> DeliveryNot
 async def update_note(
     db: AsyncSession, note_id: int, data: DeliveryNoteUpdate
 ) -> Optional[DeliveryNoteResponse]:
+    """更新送货单基本信息及明细行（替换全部旧明细），记录审计日志。"""
     result = await db.execute(select(DeliveryNote).where(DeliveryNote.id == note_id))
     note = result.scalar_one_or_none()
     if not note:
@@ -184,6 +192,7 @@ async def update_note(
 
 
 async def delete_note(db: AsyncSession, note_id: int) -> bool:
+    """删除送货单（级联删除明细行），记录审计日志。"""
     result = await db.execute(select(DeliveryNote).where(DeliveryNote.id == note_id))
     note = result.scalar_one_or_none()
     if not note:
@@ -206,6 +215,7 @@ STATUS_REVERT_FLOW = {"reviewed": "saved", "saved": "draft"}
 
 
 async def advance_status(db: AsyncSession, note_id: int) -> Optional[DeliveryNoteResponse]:
+    """推进送货单状态：draft → saved → reviewed。"""
     result = await db.execute(select(DeliveryNote).where(DeliveryNote.id == note_id))
     note = result.scalar_one_or_none()
     if not note:
@@ -221,6 +231,7 @@ async def advance_status(db: AsyncSession, note_id: int) -> Optional[DeliveryNot
 
 
 async def revert_status(db: AsyncSession, note_id: int) -> Optional[DeliveryNoteResponse]:
+    """回退送货单状态：reviewed → saved → draft。"""
     result = await db.execute(select(DeliveryNote).where(DeliveryNote.id == note_id))
     note = result.scalar_one_or_none()
     if not note:
@@ -237,8 +248,9 @@ async def revert_status(db: AsyncSession, note_id: int) -> Optional[DeliveryNote
 
 # ---- 删除约束检查 ----
 
+
 async def check_product_referenced(db: AsyncSession, product_id: int) -> bool:
-    """检查产品是否被送货单引用"""
+    """检查产品是否被送货单明细行引用（删除约束校验用）。"""
     result = await db.execute(
         select(func.count(DeliveryNoteItem.id)).where(
             DeliveryNoteItem.product_id == product_id
@@ -248,7 +260,7 @@ async def check_product_referenced(db: AsyncSession, product_id: int) -> bool:
 
 
 async def check_customer_referenced(db: AsyncSession, customer_id: int) -> bool:
-    """检查客户是否被送货单引用"""
+    """检查客户是否被送货单引用（删除约束校验用）。"""
     result = await db.execute(
         select(func.count(DeliveryNote.id)).where(
             DeliveryNote.customer_id == customer_id

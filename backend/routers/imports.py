@@ -1,5 +1,4 @@
 import io
-import logging
 import uuid
 from urllib.parse import quote
 
@@ -22,6 +21,7 @@ _preview_sessions: dict = {}
 
 @router.get("/template")
 async def download_template(entity_type: str):
+    """下载实体（product/customer）的 Excel 导入模板。"""
     try:
         data = excel_service.generate_template(entity_type)
     except ValueError as e:
@@ -48,8 +48,8 @@ async def download_template(entity_type: str):
 async def preview_import(
     file: UploadFile = File(...),
     entity_type: str = Form(...),
-    db: AsyncSession = Depends(get_db),
 ):
+    """预览导入：解析 Excel 文件，校验数据并返回预览结果（有效行数、错误列表）。"""
     if not file.filename.endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="仅支持 .xlsx 文件")
 
@@ -92,6 +92,7 @@ async def confirm_import(
     data: ConfirmImportRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    """确认导入：执行预览阶段校验通过的数据写入，原子化操作（全部成功或全部回滚）。"""
     session = _preview_sessions.pop(data.session_id, None)
     if not session:
         raise HTTPException(status_code=404, detail="预览会话不存在或已过期")

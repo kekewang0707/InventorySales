@@ -22,6 +22,7 @@ BACKEND_URL = f"http://{BACKEND_HOST}:{BACKEND_PORT}"
 
 
 def kill_process_on_port(port: int):
+    """强制终止占用指定端口的进程（排除自身）。"""
     try:
         result = subprocess.run(
             ["lsof", "-t", "-i", f":{port}"],
@@ -41,6 +42,7 @@ def kill_process_on_port(port: int):
 
 
 def wait_for_backend(url: str, timeout: float = 15.0, interval: float = 0.3) -> bool:
+    """轮询等待后端健康检查接口就绪。"""
     start = time.time()
     while time.time() - start < timeout:
         try:
@@ -54,6 +56,7 @@ def wait_for_backend(url: str, timeout: float = 15.0, interval: float = 0.3) -> 
 
 class MainWindow(QMainWindow):
     def __init__(self, url: str):
+        """初始化主窗口，创建 QWebEngineView 并打开指定 URL。"""
         super().__init__()
         self.setWindowTitle("InventorySales - 工厂销售出库管理")
         self.resize(1280, 800)
@@ -66,13 +69,14 @@ class MainWindow(QMainWindow):
         profile.downloadRequested.connect(self.handle_download)
 
     def handle_download(self, download: QWebEngineDownloadRequest):
-        """处理文件下载，保存到用户下载目录"""
+        """处理 QWebEngineView 的文件下载请求，保存到用户下载目录。"""
         suggested = download.downloadFileName()
         print(f"下载文件: {suggested}")
         download.accept()
 
 
 def main():
+    """桌面应用入口：清理旧进程 → 启动后端 → 等待就绪 → 打开前端窗口。"""
     kill_process_on_port(BACKEND_PORT)
 
     manager = ServerManager(host=BACKEND_HOST, port=BACKEND_PORT)

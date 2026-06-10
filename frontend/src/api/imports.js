@@ -14,6 +14,7 @@ export function downloadTemplate(entityType) {
   document.body.removeChild(link)
 }
 
+/** 预览导入：上传 Excel 文件到后端进行校验和预览。 */
 export function previewImport(file, entityType) {
   const formData = new FormData()
   formData.append('file', file)
@@ -24,6 +25,7 @@ export function previewImport(file, entityType) {
   })
 }
 
+/** 确认导入：执行预览阶段校验通过的数据写入。 */
 export function confirmImport(sessionId) {
   return request.post('/import/confirm', { session_id: sessionId })
 }

@@ -12,6 +12,7 @@ class Base(DeclarativeBase):
 
 
 async def get_db():
+    """获取数据库会话的依赖注入函数，每次请求自动提交，异常时回滚。"""
     async with async_session_factory() as session:
         try:
             yield session
@@ -22,9 +23,11 @@ async def get_db():
 
 
 async def init_db():
+    """初始化数据库，创建所有未创建的表。在应用启动时调用。"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 
 async def close_db():
+    """关闭数据库连接池。在应用关闭时调用。"""
     await engine.dispose()

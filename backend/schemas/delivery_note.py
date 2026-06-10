@@ -16,6 +16,7 @@ class DeliveryNoteItemBase(BaseModel):
     @field_validator("quantity")
     @classmethod
     def quantity_positive(cls, v: Decimal) -> Decimal:
+        """校验数量必须大于 0。"""
         if v <= 0:
             raise ValueError("数量必须大于0")
         return v
@@ -23,6 +24,7 @@ class DeliveryNoteItemBase(BaseModel):
     @field_validator("unit_price")
     @classmethod
     def price_non_negative(cls, v: Decimal) -> Decimal:
+        """校验单价不能为负数。"""
         if v < 0:
             raise ValueError("单价不能为负数")
         return v
@@ -101,6 +103,7 @@ class StatusUpdateRequest(BaseModel):
     @field_validator("status")
     @classmethod
     def valid_status(cls, v: str) -> str:
+        """校验状态值必须为 draft/saved/reviewed 之一。"""
         if v not in ("draft", "saved", "reviewed"):
             raise ValueError("状态值无效")
         return v

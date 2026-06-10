@@ -18,5 +18,6 @@ async def list_audit_logs(
     page_size: int = 20,
     db: AsyncSession = Depends(get_db),
 ):
+    """查询审计日志列表，支持按实体类型和操作类型筛选。"""
     total, items = await audit_service.list_logs(db, entity_type, action, page, page_size)
     return AuditLogListResponse(total=total, items=items)
