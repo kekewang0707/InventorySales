@@ -7,3 +7,10 @@ python-multipart==0.0.18
 greenlet==3.2.5
 openpyxl>=3.1
 reportlab>=4.0
+
+# AI 快捷操作
+openai>=1.0.0
+
+# AI 快捷操作
+openai>=1.0.0
+python-dotenv>=1.0.0

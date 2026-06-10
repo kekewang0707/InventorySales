@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.config import API_HOST, API_PORT
 from backend.database import init_db, close_db
-from backend.routers import products, customers, audit_logs, imports, delivery_notes, statements
+from backend.routers import products, customers, audit_logs, imports, delivery_notes, statements, ai
 
 
 @asynccontextmanager
@@ -40,7 +40,7 @@ app.include_router(audit_logs.router)
 app.include_router(imports.router)
 app.include_router(delivery_notes.router)
 app.include_router(statements.router)
-
+app.include_router(ai.router)
 
 @app.get("/api/health")
 async def health():
