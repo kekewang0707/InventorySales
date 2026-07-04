@@ -1,6 +1,7 @@
 """function — AI 工具函数注册表与处理函数。
 
 提供 ToolRegistry 注册表、预注册的查询/写入工具、以及所有处理函数的导入接口。
+兼容 HelloAgents 工具系统 API 风格。
 """
 import logging
 
@@ -12,9 +13,10 @@ _logger.addHandler(_handler)
 _logger.setLevel(logging.INFO)
 _logger.propagate = False
 
-from .registry import ToolRegistry, _ToolEntry
+from .base import Tool
+from .registry import ToolRegistry, global_registry
 from .registration import (
-    _tools,
+    tools,
     FUNCTION_DEFINITIONS,
     _QUERY_TOOLS,
     _WRITE_TOOLS,
@@ -37,7 +39,8 @@ from .handlers import (
 )
 
 __all__ = [
-    'ToolRegistry', '_tools', 'FUNCTION_DEFINITIONS',
+    'Tool', 'ToolRegistry', 'global_registry',
+    'tools', 'FUNCTION_DEFINITIONS',
     '_QUERY_TOOLS', '_WRITE_TOOLS',
     'handle_search_product', 'handle_search_customer',
     'handle_get_customer', 'handle_get_product',

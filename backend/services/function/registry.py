@@ -1,40 +1,82 @@
-"""ToolRegistry — 工具注册表，统一管理工具定义、执行、路由"""
+"""ToolRegistry — 工具注册表，统一管理工具定义、执行、路由
+
+原生工具系统 API：
+  - register_tool(tool)  注册 Tool 对象（推荐）
+  - register_function()  直接注册函数（简便）
+  - unregister() / list_tools() / clear() / get_tools_description()
+  - global_registry      全局单例
+同时保留 InventorySales 专用方法：
+  - openai_definitions / query_tools / write_tools
+  - execute_query() / execute_write() / summarize_write()
+"""
 import logging
-from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
+from .base import Tool
+
 logger = logging.getLogger('backend.services.function')
-
-
-@dataclass
-class _ToolEntry:
-    name: str
-    description: str
-    parameters: dict
-    security: str  # "query" | "write"
-    handler: Optional[Callable] = None        # 查询类 handler(params, db) → str
-    write_handler: Optional[Callable] = None   # 写入类 handler(params, db) → str
-    summarize_handler: Optional[Callable] = None  # 写入类摘要(params) → str
 
 
 class ToolRegistry:
     """工具注册表 — 统一管理工具定义、执行路由、离线匹配和 OpenAI function calling 格式生成。"""
 
     def __init__(self):
-        """初始化空工具注册表。"""
-        self._tools: Dict[str, _ToolEntry] = {}
+        self._tools: Dict[str, Tool] = {}
 
-    def register(self, name: str, description: str, parameters: dict, *,
-                 security: str = "query",
-                 handler: Optional[Callable] = None,
-                 write_handler: Optional[Callable] = None,
-                 summarize_handler: Optional[Callable] = None):
-        """注册一个工具，包括名称、描述、参数 schema 和执行路由。"""
-        self._tools[name] = _ToolEntry(
-            name=name, description=description, parameters=parameters,
-            security=security, handler=handler,
-            write_handler=write_handler, summarize_handler=summarize_handler,
-        )
+    # ==================== 注册 / 注销 ====================
+
+    def register_tool(self, tool: Tool):
+        """注册一个 Tool 对象（推荐方式）。"""
+        self._tools[tool.name] = tool
+
+    def register_function(self, name: str, description: str, func: Callable[[str], str]):
+        """直接注册一个函数作为工具（简便方式，参数/返回均为字符串）。"""
+        wrapper = Tool(name=name, description=description,
+                       parameters={"type": "object", "properties": {
+                           "input": {"type": "string", "description": "输入参数"}
+                       }, "additionalProperties": False},
+                       handler=lambda params, db: func(params.get("input", "")),
+                       security="query")
+        self._tools[name] = wrapper
+
+    def unregister(self, name: str):
+        """注销工具。"""
+        self._tools.pop(name, None)
+
+    def clear(self):
+        """清空所有工具。"""
+        self._tools.clear()
+
+    # ==================== 查询 ====================
+
+    def has(self, name: str) -> bool:
+        return name in self._tools
+
+    def is_write(self, name: str) -> bool:
+        e = self._tools.get(name)
+        return e is not None and e.security == "write"
+
+    def is_query(self, name: str) -> bool:
+        e = self._tools.get(name)
+        return e is not None and e.security == "query"
+
+    def list_tools(self) -> list:
+        """列出所有已注册工具的名称和基本信息。"""
+        return [{"name": t.name, "description": t.description, "security": t.security}
+                for t in self._tools.values()]
+
+    def get_tool(self, name: str) -> Optional[Tool]:
+        """获取指定名称的 Tool 对象。"""
+        return self._tools.get(name)
+
+    def get_tools_description(self) -> str:
+        """获取所有可用工具的格式化描述字符串（用于构建提示词）。"""
+        descriptions = []
+        for t in self._tools.values():
+            descriptions.append(f"- {t.name}: {t.description}")
+        return "\n".join(descriptions) if descriptions else "暂无可用工具"
+
+    # ==================== OpenAI function calling 格式 ====================
 
     @property
     def openai_definitions(self) -> list:
@@ -58,19 +100,7 @@ class ToolRegistry:
         """返回所有写入类工具的名称集合。"""
         return {n for n, e in self._tools.items() if e.security == "write"}
 
-    def has(self, name: str) -> bool:
-        """检查工具是否已注册。"""
-        return name in self._tools
-
-    def is_write(self, name: str) -> bool:
-        """检查工具是否为写入类操作。"""
-        e = self._tools.get(name)
-        return e is not None and e.security == "write"
-
-    def is_query(self, name: str) -> bool:
-        """检查工具是否为查询类操作。"""
-        e = self._tools.get(name)
-        return e is not None and e.security == "query"
+    # ==================== 执行 ====================
 
     async def execute_query(self, name: str, params: dict, db) -> str:
         """执行查询类工具。"""
@@ -103,3 +133,20 @@ class ToolRegistry:
             return e.summarize_handler(params)
         except Exception:
             return f"{name}({params})"
+
+    def execute_tool(self, name: str, input_text: str) -> str:
+        """简易执行接口：字符串入、字符串出（兼容 HelloAgents 风格）。"""
+        e = self._tools.get(name)
+        if e is None:
+            return f"错误：未找到名为 '{name}' 的工具。"
+        if e.handler is not None:
+            import asyncio
+            try:
+                return asyncio.run(e.handler({"input": input_text}, None))
+            except Exception as ex:
+                return f"错误：执行工具 '{name}' 时发生异常: {ex}"
+        return f"错误：工具 '{name}' 无可用的查询处理函数。"
+
+
+# 全局工具注册表单例
+global_registry = ToolRegistry()
