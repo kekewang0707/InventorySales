@@ -27,7 +27,7 @@ async def scheduled_cleanup():
         await asyncio.sleep(3600 * 6)
         try:
             async with async_session_factory() as db:
-                from backend.services.ai_service import cleanup_stale_sessions
+                from backend.services.ai_service_v2 import cleanup_stale_sessions
                 await cleanup_stale_sessions(db)
         except Exception as e:
             logger.warning("Session cleanup failed: %s", e)
@@ -37,8 +37,11 @@ async def scheduled_cleanup():
 async def lifespan(app: FastAPI):
     """FastAPI 生命周期管理器：应用启动时初始化数据库和加载 AI 会话，关闭时清理连接池。"""
     await init_db()
-    # 从 DB 加载 AI 会话到内存缓存
-    from backend.services.ai_service import load_sessions_from_db
+    # 初始化 LangGraph checkpointer
+    from backend.services.agent_state import get_checkpointer, close_checkpointer
+    await get_checkpointer()
+    # 从 DB 加载 AI 会话元数据到内存缓存
+    from backend.services.ai_service_v2 import load_sessions_from_db
     async with async_session_factory() as db:
         await load_sessions_from_db(db)
     # 启动定时清理任务
@@ -49,6 +52,7 @@ async def lifespan(app: FastAPI):
         await cleanup_task
     except asyncio.CancelledError:
         pass
+    await close_checkpointer()
     await close_db()
 
 

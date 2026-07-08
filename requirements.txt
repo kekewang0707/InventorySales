@@ -1,4 +1,4 @@
-fastapi==0.115.6
+fastapi>=0.115.0
 uvicorn[standard]==0.34.0
 sqlalchemy==2.0.36
 aiosqlite==0.20.0
@@ -7,10 +7,13 @@ python-multipart==0.0.18
 greenlet==3.2.5
 openpyxl>=3.1
 reportlab>=4.0
-
-# AI 快捷操作
-openai>=1.0.0
-
-# AI 快捷操作
-openai>=1.0.0
 python-dotenv>=1.0.0
+
+# AI — LangChain v1.2 + LangGraph
+langchain-core>=0.3.0,<0.4.0
+langchain-openai>=0.3.0,<0.4.0
+langgraph>=0.2.0,<0.4.0
+langgraph-checkpoint-sqlite>=2.0.0
+
+# Legacy (offline fallback)
+openai>=1.0.0

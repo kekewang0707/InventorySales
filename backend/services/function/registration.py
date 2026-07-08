@@ -120,9 +120,9 @@ tools.register_tool(Tool(
 ))
 
 tools.register_tool(Tool(
-    "advance_note_status", "推进送货单状态：draft→saved→reviewed（需要用户二次确认后才执行）", {
+    "advance_note_status", "推进送货单状态：draft→saved→reviewed。note_id支持数据库ID(小整数)或文档编号(如1783498918381)", {
         "type": "object", "properties": {
-            "note_id": {"type": "integer", "description": "送货单ID"},
+            "note_id": {"type": "string", "description": "送货单的数据库ID（小整数）或文档编号（如1783498918381）"},
         }, "required": ["note_id"], "additionalProperties": False,
     },
     security="write",

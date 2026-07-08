@@ -194,9 +194,35 @@ async def handle_create_delivery_note(params: dict, db) -> str:
 
 
 async def handle_advance_note_status(params: dict, db) -> str:
-    """执行推进送货单状态的写入操作（用户已确认）。"""
-    nid = int(params["note_id"])
-    note = await _advance_status(db, nid)
+    """执行推进送货单状态的写入操作（用户已确认）。
+
+    支持两种查找方式：
+    - 数据库 ID（小于 10000 的整数视为自增 ID）
+    - 文档编号（如 1783498918381，按 doc_number 字段查找）
+    """
+    from backend.models.delivery_note import DeliveryNote
+    from sqlalchemy import select
+
+    raw_id = str(params["note_id"])
+    note = None
+
+    # 尝试按数据库 ID 查找（小整数）
+    try:
+        nid = int(raw_id)
+        if nid < 10000:
+            note = await _advance_status(db, nid)
+    except (ValueError, TypeError):
+        pass
+
+    # 按文档编号查找
     if not note:
-        return f"送货单（ID={nid}）不存在"
+        row = await db.execute(
+            select(DeliveryNote).where(DeliveryNote.doc_number == raw_id)
+        )
+        dn = row.scalar_one_or_none()
+        if dn:
+            note = await _advance_status(db, dn.id)
+
+    if not note:
+        return f"送货单（编号={raw_id}）不存在"
     return f"操作成功：送货单 #{note.doc_number} 状态已推进至「{note.status}」"
